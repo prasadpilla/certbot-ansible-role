@@ -1,0 +1,50 @@
+---
+- name: Update and upgrade apt packages
+  become: true
+  apt:
+    upgrade: yes
+    update_cache: yes
+
+- name: Install software-properties-common
+  apt:
+    name: software-properties-common
+    state: present
+
+- name: Add Certbot-repository
+  apt_repository: repo="ppa:certbot/certbot" state=present
+
+- name: Install the Certbot's Nginx package
+  apt:
+    name: python-certbot-nginx
+    state: present
+
+- name: Update and upgrade apt packages
+  become: true
+  apt:
+    upgrade: yes
+    update_cache: yes
+
+- name: Get Certbot certificate
+  become_method: sudo
+  command: "certbot --nginx certonly --non-interactive --quiet --agree-tos --email {{ certbot_email }} -d {{ deploy_server_hostname }}"
+
+- name: Check for dhparam.pem
+  stat: path=/etc/nginx/dhparam.pem
+  register: dhparam
+
+- name: Generate dhparam
+  command: openssl dhparam -out /etc/nginx/dhparam.pem 4096
+  when: dhparam.stat.exists == false
+
+- name: Copy nginx configuration file with HTTPS settings
+  template: src=nginx_app_config_https dest=/etc/nginx/sites-available/{{ deploy_app_name }} owner=root group=root
+
+- name: Restart Nginx
+  service: name=nginx state=restarted enabled=yes
+
+- name: Ensure Nginx is running
+  service: name=nginx state=started enabled=yes
+
+- name: Certbot Dry run for Auto Renewal Cron Job
+  become_method: sudo
+  command: "certbot renew --dry-run --non-interactive"

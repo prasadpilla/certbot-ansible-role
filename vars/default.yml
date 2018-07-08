@@ -1,0 +1,4 @@
+---
+deploy_server_hostname: example.com
+deploy_app_name: eample-app
+certbot_email: eamil-address@example.com
